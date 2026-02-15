@@ -8,6 +8,8 @@ interface ConfigData {
   phone: string;
   address: string;
   addressLine2: string;
+  favicon?: string;
+  logoImage?: string;
   metaTitle?: string;
   // Head Office
   headOfficeName?: string;
