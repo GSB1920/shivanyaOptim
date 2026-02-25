@@ -34,6 +34,18 @@ const AdminPage = () => {
     alert("Configuration saved successfully!");
   };
 
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const name = e.target.name as keyof typeof formData;
+      setFormData((prev) => ({ ...prev, [name]: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -124,6 +136,15 @@ const AdminPage = () => {
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
                     placeholder="https://example.com/logo.png"
                   />
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      name="logoImage"
+                      accept="image/*"
+                      onChange={handleFile}
+                      className="w-full"
+                    />
+                  </div>
                   <p className="text-xs text-muted mt-1">Leave empty to use Logo Text</p>
                 </div>
                 <div>
@@ -138,6 +159,15 @@ const AdminPage = () => {
                     className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
                     placeholder="https://example.com/favicon.ico"
                   />
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      name="favicon"
+                      accept="image/*,.ico"
+                      onChange={handleFile}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

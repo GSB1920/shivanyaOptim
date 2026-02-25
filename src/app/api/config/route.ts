@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
     await redis.set(KEY, merged);
     return NextResponse.json(merged, { status: 200 });
   } catch (e) {
-    return NextResponse.json({ error: "failed" }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("Config update failed:", e);
+    return NextResponse.json(
+      { error: "Config update failed", details: message },
+      { status: 500 }
+    );
   }
 }

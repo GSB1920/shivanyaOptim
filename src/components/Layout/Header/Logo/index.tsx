@@ -1,17 +1,19 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useConfig } from "@/context/ConfigContext";
+import { useState } from "react";
 
 const Logo: React.FC = () => {
   const { config } = useConfig();
+  const [useText, setUseText] = useState(false);
   return (
     <Link href="/" className="flex items-center">
-      {config.logoImage ? (
+      {config.logoImage && !useText ? (
         <img
           src={config.logoImage}
-          alt={config.companyName}
+          alt={config.companyName || "Company Logo"}
           className="h-8 w-auto object-contain"
+          onError={() => setUseText(true)}
         />
       ) : (
         <h2 className="text-2xl font-bold text-midnight_text dark:text-white">
