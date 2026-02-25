@@ -16,28 +16,27 @@ const MetadataUpdater = () => {
 
       // Update Favicon
       if (config.favicon) {
-        const existingLink = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-        
-        // Remove existing favicon if it's different to force update or prevent duplicates
-        // Actually, just updating href is safer, but if Next.js adds a new one, we might have two.
-        // Let's find all icon links and remove them, then add ours.
-        
-        const links = document.querySelectorAll("link[rel*='icon']");
-        links.forEach((link) => {
-            if (link.getAttribute('href') !== config.favicon) {
-                link.parentNode?.removeChild(link);
+        try {
+          const head = document.getElementsByTagName("head")[0];
+          const byId = document.getElementById("app-favicon") as HTMLLinkElement | null;
+          const firstIcon = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
+          const target = byId || firstIcon;
+          if (target) {
+            if (target.href !== config.favicon) {
+              target.rel = "icon";
+              target.type = "image/x-icon";
+              target.href = config.favicon;
+              if (!byId) target.id = "app-favicon";
             }
-        });
-
-        // Check if ours exists now
-        const currentLink = document.querySelector(`link[rel*='icon'][href='${config.favicon}']`);
-        if (!currentLink) {
+          } else {
             const link = document.createElement("link");
+            link.id = "app-favicon";
+            link.rel = "icon";
             link.type = "image/x-icon";
-            link.rel = "shortcut icon";
             link.href = config.favicon;
-            document.getElementsByTagName("head")[0].appendChild(link);
-        }
+            head.appendChild(link);
+          }
+        } catch {}
       }
     };
 
@@ -49,12 +48,11 @@ const MetadataUpdater = () => {
     
     // Also observe head changes to persist favicon
     const observer = new MutationObserver(() => {
-        if (config.favicon) {
-             const existingLink = document.querySelector(`link[rel*='icon'][href='${config.favicon}']`);
-             if (!existingLink) {
-                 updateMeta();
-             }
-        }
+      if (!config.favicon) return;
+      const byId = document.getElementById("app-favicon") as HTMLLinkElement | null;
+      if (!byId || byId.href !== config.favicon) {
+        updateMeta();
+      }
     });
     
     observer.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
