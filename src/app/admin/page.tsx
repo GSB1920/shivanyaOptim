@@ -142,6 +142,51 @@ const AdminPage = () => {
               </div>
             </div>
 
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
+              <h3 className="font-semibold text-lg text-midnight_text dark:text-white border-b pb-2">Social Profiles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
+                    Facebook URL
+                  </label>
+                  <input
+                    type="url"
+                    name="facebookUrl"
+                    value={(formData as any).facebookUrl || ""}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
+                    placeholder="https://facebook.com/yourpage"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
+                    Twitter URL
+                  </label>
+                  <input
+                    type="url"
+                    name="twitterUrl"
+                    value={(formData as any).twitterUrl || ""}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
+                    placeholder="https://twitter.com/yourhandle"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
+                    LinkedIn URL
+                  </label>
+                  <input
+                    type="url"
+                    name="linkedinUrl"
+                    value={(formData as any).linkedinUrl || ""}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
+                    placeholder="https://linkedin.com/company/yourcompany"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Office Locations */}
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
               <h3 className="font-semibold text-lg text-midnight_text dark:text-white border-b pb-2">Office Locations</h3>

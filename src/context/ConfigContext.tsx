@@ -1,59 +1,13 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from "react";
-
-interface ConfigData {
-  companyName: string;
-  logoText: string;
-  email: string;
-  phone: string;
-  address: string;
-  addressLine2: string;
-  favicon?: string;
-  logoImage?: string;
-  metaTitle?: string;
-  // Head Office
-  headOfficeName?: string;
-  headOfficeAddress?: string;
-  headOfficeAddress2?: string;
-  headOfficeEmail?: string;
-  headOfficePhone?: string;
-  // Branch Office
-  branchOfficeName?: string;
-  branchOfficeAddress?: string;
-  branchOfficeAddress2?: string;
-  branchOfficeEmail?: string;
-  branchOfficePhone?: string;
-  // Map
-  mapEmbedUrl?: string;
-}
+import { DEFAULT_CONFIG, ConfigData } from "@/lib/defaultConfig";
 
 interface ConfigContextType {
   config: ConfigData;
   updateConfig: (newConfig: Partial<ConfigData>) => void;
 }
 
-const defaultConfig: ConfigData = {
-  companyName: "Your Company Name",
-  logoText: "YourLogo",
-  email: "contact@company.com",
-  phone: "+1 234 567 890",
-  address: "123 Business Rd",
-  addressLine2: "City, Country",
-  favicon: "",
-  logoImage: "",
-  metaTitle: "Company Name - Tagline",
-  headOfficeName: "Head Office",
-  headOfficeAddress: "123 Business Rd",
-  headOfficeAddress2: "City, Zip Code",
-  headOfficeEmail: "head@company.com",
-  headOfficePhone: "+1 234 567 890",
-  branchOfficeName: "Branch Office",
-  branchOfficeAddress: "456 Innovation Ave",
-  branchOfficeAddress2: "City, Zip Code",
-  branchOfficeEmail: "branch@company.com",
-  branchOfficePhone: "+1 987 654 321",
-  mapEmbedUrl: "",
-};
+const defaultConfig: ConfigData = DEFAULT_CONFIG;
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
@@ -62,23 +16,38 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [config, setConfig] = useState<ConfigData>(defaultConfig);
 
-  // Load from localStorage on mount
   useEffect(() => {
-    const savedConfig = localStorage.getItem("veda_config");
-    if (savedConfig) {
+    const load = async () => {
       try {
-        setConfig({ ...defaultConfig, ...JSON.parse(savedConfig) });
-      } catch (e) {
-        console.error("Failed to parse config from localStorage", e);
+        const res = await fetch("/api/config", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setConfig({ ...defaultConfig, ...data });
+          localStorage.setItem("veda_config", JSON.stringify(data));
+          return;
+        }
+      } catch {}
+      const saved = localStorage.getItem("veda_config");
+      if (saved) {
+        try {
+          setConfig({ ...defaultConfig, ...JSON.parse(saved) });
+        } catch {}
       }
-    }
+    };
+    load();
   }, []);
 
-  // Save to localStorage whenever config changes
   const updateConfig = (newConfig: Partial<ConfigData>) => {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     localStorage.setItem("veda_config", JSON.stringify(updated));
+    try {
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+    } catch {}
   };
 
   return (

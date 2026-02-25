@@ -36,15 +36,21 @@ const Footer = () => {
             </div>
           </div>
           <div className="flex gap-4 mt-4 lg:mt-0">
-            <Link href="#" className="text-muted hover:text-primary">
-              <Icon icon="fe:facebook" width="32" height="32" />
-            </Link>
-            <Link href="#" className="text-muted hover:text-primary">
-              <Icon icon="fa6-brands:square-twitter" width="32" height="32" />
-            </Link>
-            <Link href="#" className="text-muted hover:text-primary">
-              <Icon icon="fa6-brands:linkedin" width="32" height="32" />
-            </Link>
+            {config.facebookUrl ? (
+              <Link href={config.facebookUrl} className="text-muted hover:text-primary">
+                <Icon icon="fe:facebook" width="32" height="32" />
+              </Link>
+            ) : null}
+            {config.twitterUrl ? (
+              <Link href={config.twitterUrl} className="text-muted hover:text-primary">
+                <Icon icon="fa6-brands:square-twitter" width="32" height="32" />
+              </Link>
+            ) : null}
+            {config.linkedinUrl ? (
+              <Link href={config.linkedinUrl} className="text-muted hover:text-primary">
+                <Icon icon="fa6-brands:linkedin" width="32" height="32" />
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="grid grid-cols-12 sm:mb-16 mb-8 pt-8 gap-4 relative before:content-[''] before:absolute before:w-20 before:h-20 before:bg-[url('/images/footer/bgcir.png')] before:bg-no-repeat before:-left-36 before:bottom-9 lg:before:block before:hidden">
