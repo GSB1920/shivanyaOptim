@@ -128,14 +128,6 @@ const AdminPage = () => {
                   <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
                     Logo Image URL
                   </label>
-                  <input
-                    type="text"
-                    name="logoImage"
-                    value={formData.logoImage || ""}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
-                    placeholder="https://example.com/logo.png"
-                  />
                   <div className="mt-2">
                     <input
                       type="file"
@@ -151,14 +143,6 @@ const AdminPage = () => {
                   <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
                     Favicon URL
                   </label>
-                  <input
-                    type="text"
-                    name="favicon"
-                    value={formData.favicon || ""}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
-                    placeholder="https://example.com/favicon.ico"
-                  />
                   <div className="mt-2">
                     <input
                       type="file"

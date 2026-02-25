@@ -41,13 +41,20 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     localStorage.setItem("veda_config", JSON.stringify(updated));
-    try {
-      fetch("/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
+    void fetch("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const details = await res.json().catch(() => ({}));
+          console.error("Config save failed:", details);
+        }
+      })
+      .catch((err) => {
+        console.error("Config save failed (network):", err);
       });
-    } catch {}
   };
 
   return (
