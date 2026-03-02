@@ -110,7 +110,31 @@ const Footer = () => {
 
           <div className="md:col-span-5 col-span-12">
             <p className="text-18 text-white font-bold">Sign up for updates</p>
-            <form className="mt-8">
+            <form
+              className="mt-8"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const input = form.querySelector<HTMLInputElement>("#email");
+                const email = input?.value || "";
+                if (!email) return;
+                try {
+                  const res = await fetch("/api/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email }),
+                  });
+                  if (res.ok) {
+                    input!.value = "";
+                    alert("Subscribed successfully");
+                  } else {
+                    alert("Subscription failed");
+                  }
+                } catch {
+                  alert("Network error");
+                }
+              }}
+            >
               <div className="relative">
                 <input
                   type="email"
@@ -118,6 +142,7 @@ const Footer = () => {
                   id="email"
                   placeholder="Enter your email address"
                   className="bg-search placeholder:text-foottext text-white! py-3 pl-5"
+                  required
                 />
                 <Icon
                   icon="solar:plain-2-linear"

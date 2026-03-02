@@ -62,7 +62,7 @@ const Method = () => {
                       Tailor-made solutions that address your specific business challenges and drive efficiency.
                     </p>
                     <Link
-                      href="#"
+                      href="/services"
                       className="text-17 flex gap-2 items-center hover:text-blue-700 text-primary "
                     >
                       Learn More
@@ -131,7 +131,7 @@ const Method = () => {
                     Unlock actionable insights from your data to make informed decisions.
                   </p>
                   <Link
-                    href="#"
+                    href="/services"
                     className="text-17 flex gap-2 items-center hover:text-blue-700 text-primary "
                   >
                     Learn More

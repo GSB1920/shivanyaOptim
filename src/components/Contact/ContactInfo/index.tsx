@@ -53,8 +53,7 @@ const ContactInfo = () => {
                     Careers
                   </span>
                   <p className="text-DeepOcean font-normal text-xl max-w-80 pt-3 pb-7 dark:text-white dark:text-opacity-50">
-                    Sit ac ipsum leo lorem magna nunc mattis maecenas non
-                    vestibulum
+                    We're growing. Send your resume to careers@shivanya-software.com or visit the Careers page.
                   </p>
                 </div>
                 <div>

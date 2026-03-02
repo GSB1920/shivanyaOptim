@@ -145,31 +145,16 @@ export default async function Post({ params }: any) {
                           Share
                         </h2>
                         <div className="flex gap-4 flex-col">
-                          <Link
-                            href="#"
-                            className="bg-[#526fa3] py-4 px-6 text-20 rounded-lg flex items-center text-white"
-                          >
-                            <svg
-                              className="svg-inline--fa fa-facebook-f me-3"
-                              aria-hidden="true"
-                              focusable="false"
-                              data-prefix="fab"
-                              data-icon="facebook-f"
-                              role="img"
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 320 512"
-                              width="12.5px"
-                              height="20px"
-                            >
-                              <path
-                                fill="white"
-                                d="M80 299.3V512H196V299.3h86.5l18-97.8H196V166.9c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4 .4 37 1.2V7.9C291.4 4 256.4 0 236.2 0 129.3 0 80 50.5 80 159.4v42.1H14v97.8H80z"
-                              />
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://shivanya-software.vercel.app/blog/${data.slug}`)}`} target="_blank" rel="noopener noreferrer" className="bg-[#526fa3] py-4 px-6 text-20 rounded-lg flex items-center text-white">
+                            <svg className="svg-inline--fa fa-facebook-f me-3" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="facebook-f" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" width="12.5px" height="20px">
+                              <path fill="white" d="M80 299.3V512H196V299.3h86.5l18-97.8H196V166.9c0-51.7 20.3-71.5 72.7-71.5 16.3 0 29.4 .4 37 1.2V7.9C291.4 4 256.4 0 236.2 0 129.3 0 80 50.5 80 159.4v42.1H14v97.8H80z" />
                             </svg>
                             Facebook
-                          </Link>
-                          <Link
-                            href="#"
+                          </a>
+                          <a
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(`https://shivanya-software.vercel.app/blog/${data.slug}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="bg-[#46C4FF] py-4 px-6 text-20 rounded-lg flex items-center text-white"
                           >
                             <svg
@@ -190,9 +175,11 @@ export default async function Post({ params }: any) {
                               />
                             </svg>
                             twitter
-                          </Link>
-                          <Link
-                            href="#"
+                          </a>
+                          <a
+                            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://shivanya-software.vercel.app/blog/${data.slug}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="bg-[#3C86AD] py-4 px-6 flex items-center text-20 rounded-lg text-white"
                           >
                             <svg
@@ -213,18 +200,44 @@ export default async function Post({ params }: any) {
                               />
                             </svg>
                             linkedin
-                          </Link>
+                          </a>
                         </div>
                       </div>
                       <div className="w-full py-12 px-11 bg-white dark:bg-dark_b shadow-lg rounded-b-lg">
                         <p className="text-24 mb-4">Join our Newsletter</p>
-                        <input
-                          placeholder="Email address"
-                          className="p-3 dark:bg-search border border-border dark:border-dark_border rounded-lg mb-2 w-full focus:outline-0 focus:border-primary dark:focus:border-primary"
-                        />
-                        <button className="bg-primary w-full px-7 border text-base text-white border-primary py-4 rounded-sm hover:bg-transparent hover:text-primary">
-                          Subscribe
-                        </button>
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            const form = e.currentTarget;
+                            const input = form.querySelector<HTMLInputElement>("input[name='email']");
+                            const email = input?.value || "";
+                            if (!email) return;
+                            try {
+                              const res = await fetch("/api/subscribe", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ email }),
+                              });
+                              if (res.ok) {
+                                input!.value = "";
+                                alert("Subscribed successfully");
+                              } else {
+                                alert("Subscription failed");
+                              }
+                            } catch {
+                              alert("Network error");
+                            }
+                          }}
+                        >
+                          <input
+                            name="email"
+                            placeholder="Email address"
+                            className="p-3 dark:bg-search border border-border dark:border-dark_border rounded-lg mb-2 w-full focus:outline-0 focus:border-primary dark:focus:border-primary"
+                          />
+                          <button type="submit" className="bg-primary w-full px-7 border text-base text-white border-primary py-4 rounded-sm hover:bg-transparent hover:text-primary">
+                            Subscribe
+                          </button>
+                        </form>
                       </div>
                     </div>
                   </div>

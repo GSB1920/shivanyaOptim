@@ -89,8 +89,33 @@ const Search = () => {
               </span>
             </h2>
             <div className="md:max-w-75% mx-auto mt-6">
-              <div className="flex lg:items-center md:items-start bg-white dark:bg-darkHeroBg shadow-md rounded-2xl overflow-hidden">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const input = form.querySelector<HTMLInputElement>("input[name='email']");
+                  const email = input?.value?.trim();
+                  if (!email) return;
+                  try {
+                    const res = await fetch("/api/subscribe", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email }),
+                    });
+                    if (res.ok) {
+                      if (input) input.value = "";
+                      alert("Thanks! We'll reach out shortly.");
+                    } else {
+                      alert("Submission failed. Please try again.");
+                    }
+                  } catch {
+                    alert("Network error. Please try again later.");
+                  }
+                }}
+                className="flex lg:items-center md:items-start bg-white dark:bg-darkHeroBg shadow-md rounded-2xl overflow-hidden"
+              >
                 <input
+                  name="email"
                   type="email"
                   placeholder="Enter your email address."
                   className="grow px-4 py-5 pl-6 text-white dark:text-heroBg text-17 focus:outline-hidden bg-white dark:bg-darkHeroBg hidden md:block"
@@ -103,7 +128,7 @@ const Search = () => {
                     Get Quote
                   </Link>
                 </div>
-              </div>
+              </form>
               <div className="flex items-center justify-center my-7">
                 <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                   <Icon
