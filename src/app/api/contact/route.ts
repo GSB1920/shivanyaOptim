@@ -29,13 +29,23 @@ export async function POST(request: Request) {
 
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const isProd = process.env.NODE_ENV === "production";
 
     if (url && token) {
       const redis = new Redis({ url, token });
       await redis.lpush("contact:submissions", JSON.stringify(submission));
+      return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true });
+    if (isProd) {
+      console.warn("Missing Upstash Redis configuration for /api/contact");
+      return NextResponse.json(
+        { error: "Database is not configured" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, local: true });
   } catch (e) {
     return NextResponse.json({ error: "Failed to submit contact form" }, { status: 500 });
   }

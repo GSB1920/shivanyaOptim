@@ -4,12 +4,13 @@ import { Icon } from "@iconify/react";
 import { motion, useInView } from "motion/react";
 import { useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { review } from "@/app/api/data";
+import { useRouter } from "next/navigation";
 
 const Search = () => {
   const ref = useRef(null);
   const inView = useInView(ref);
+  const router = useRouter();
 
   const TopAnimation = {
     initial: { y: -10, opacity: 0 },
@@ -104,7 +105,7 @@ const Search = () => {
                     });
                     if (res.ok) {
                       if (input) input.value = "";
-                      alert("Thanks! We'll reach out shortly.");
+                      router.push("/contact");
                     } else {
                       alert("Submission failed. Please try again.");
                     }
@@ -121,12 +122,12 @@ const Search = () => {
                   className="grow px-4 py-5 pl-6 text-white dark:text-heroBg text-17 focus:outline-hidden bg-white dark:bg-darkHeroBg hidden md:block"
                 />
                 <div className="flex lg:items-center lg:justify-start justify-center mr-4">
-                  <Link
-                    href="/contact"
+                  <button
+                    type="submit"
                     className="text-17 flex items-center bg-primary text-white py-3 px-8 rounded-lg w-36  my-2 border border-primary hover:text-primary hover:bg-transparent"
                   >
                     Get Quote
-                  </Link>
+                  </button>
                 </div>
               </form>
               <div className="flex items-center justify-center my-7">

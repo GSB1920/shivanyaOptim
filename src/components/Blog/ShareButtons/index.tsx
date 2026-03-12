@@ -1,10 +1,9 @@
 "use client";
 import React from "react";
 
-const ShareButtons: React.FC<{ title: string }> = ({ title }) => {
+const ShareButtons: React.FC<{ title: string; url?: string }> = ({ title, url }) => {
   const open = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
-  const currentUrl =
-    typeof window !== "undefined" ? window.location.href : "";
+  const currentUrl = url || (typeof window !== "undefined" ? window.location.href : "");
   const shareTwitter = () => {
     open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(currentUrl)}`

@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import HeroSub from "@/components/SharedComponents/HeroSub";
 import { Metadata } from "next";
 
@@ -18,10 +19,10 @@ const SitemapPage = () => {
       <section className="dark:bg-darkmode py-16">
         <div className="container mx-auto lg:max-w-(--breakpoint-xl) md:max-w-(--breakpoint-md) px-4">
           <ul className="list-disc pl-6 text-muted dark:text-white dark:text-opacity-70">
-            <li><a className="hover:text-primary" href="/services">Services</a></li>
-            <li><a className="hover:text-primary" href="/about">About</a></li>
-            <li><a className="hover:text-primary" href="/blog">Blog</a></li>
-            <li><a className="hover:text-primary" href="/contact">Contact</a></li>
+            <li><Link className="hover:text-primary" href="/services">Services</Link></li>
+            <li><Link className="hover:text-primary" href="/about">About</Link></li>
+            <li><Link className="hover:text-primary" href="/blog">Blog</Link></li>
+            <li><Link className="hover:text-primary" href="/contact">Contact</Link></li>
           </ul>
         </div>
       </section>

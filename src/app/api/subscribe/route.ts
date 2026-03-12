@@ -20,6 +20,14 @@ export async function POST(request: Request) {
       await client.sadd("site:subscribers", email);
       return NextResponse.json({ ok: true });
     }
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd) {
+      console.warn("Missing Upstash Redis configuration for /api/subscribe");
+      return NextResponse.json(
+        { error: "Database is not configured" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ ok: true, local: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

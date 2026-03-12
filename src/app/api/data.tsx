@@ -118,10 +118,6 @@ export const footerLinks: { link: string; href: string }[] = [
     href: "/faq",
   },
   {
-    link: "Sitemap",
-    href: "/sitemap",
-  },
-  {
     link: "Terms of Service",
     href: "/terms",
   },

@@ -277,7 +277,7 @@ const AdminPage = () => {
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkmode dark:border-dark_border dark:text-white"
                   placeholder="https://www.google.com/maps/embed?..."
                 />
-                <p className="text-xs text-muted mt-1">Paste the 'src' attribute from the Google Maps Embed code.</p>
+                <p className="text-xs text-muted mt-1">Paste the &apos;src&apos; attribute from the Google Maps Embed code.</p>
               </div>
             </div>
 
