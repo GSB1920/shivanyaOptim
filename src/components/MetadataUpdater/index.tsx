@@ -4,64 +4,83 @@ import { useConfig } from "@/context/ConfigContext";
 import { usePathname } from "next/navigation";
 
 const MetadataUpdater = () => {
-  const { config } = useConfig();
+  const { config, isLoading, fetchFailed } = useConfig();
   const pathname = usePathname();
 
   useEffect(() => {
-    const updateMeta = () => {
-      // Update Title (only if set)
-      if (config.metaTitle) {
-        document.title = config.metaTitle;
-      }
+    if (isLoading) return;
 
-      // Update Favicon
-      if (config.favicon) {
-        try {
-          const head = document.getElementsByTagName("head")[0];
-          const byId = document.getElementById("app-favicon") as HTMLLinkElement | null;
-          const firstIcon = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
-          const target = byId || firstIcon;
-          if (target) {
-            if (target.href !== config.favicon) {
-              target.rel = "icon";
-              target.type = "image/x-icon";
-              target.href = config.favicon;
-              if (!byId) target.id = "app-favicon";
-            }
-          } else {
-            const link = document.createElement("link");
-            link.id = "app-favicon";
-            link.rel = "icon";
-            link.type = "image/x-icon";
-            link.href = config.favicon;
-            head.appendChild(link);
-          }
-        } catch {}
+    if (config.metaTitle) {
+      document.title = config.metaTitle;
+    }
+
+    const head = document.getElementsByTagName("head")[0];
+    const resolveTarget = () => {
+      const byId = document.getElementById("app-favicon") as HTMLLinkElement | null;
+      const firstIcon = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
+      if (byId) return byId;
+      if (firstIcon) {
+        firstIcon.id = "app-favicon";
+        return firstIcon;
       }
+      const link = document.createElement("link");
+      link.id = "app-favicon";
+      link.rel = "icon";
+      link.type = "image/x-icon";
+      head.appendChild(link);
+      return link;
     };
 
-    // Run immediately
-    updateMeta();
+    let chosenHref = "";
+    const applyFavicon = (href: string) => {
+      if (!href) return;
+      try {
+        const target = resolveTarget();
+        if (target.href !== href) {
+          target.rel = "icon";
+          target.type = "image/x-icon";
+          target.href = href;
+        }
+        chosenHref = href;
+      } catch {}
+    };
 
-    // Run after a short delay to override Next.js head updates during navigation
-    const timeoutId = setTimeout(updateMeta, 50);
-    
-    // Also observe head changes to persist favicon
+    const fallbackHref = "/favicon.ico";
+    const desiredFavicon = (config.favicon || "").trim();
+    let imageLoader: HTMLImageElement | null = null;
+
+    if (desiredFavicon) {
+      imageLoader = new Image();
+      imageLoader.onload = () => applyFavicon(desiredFavicon);
+      imageLoader.onerror = () => applyFavicon(fallbackHref);
+      imageLoader.src = desiredFavicon;
+    } else if (fetchFailed) {
+      applyFavicon(fallbackHref);
+    }
+
     const observer = new MutationObserver(() => {
-      if (!config.favicon) return;
-      const byId = document.getElementById("app-favicon") as HTMLLinkElement | null;
-      if (!byId || byId.href !== config.favicon) {
-        updateMeta();
+      if (!chosenHref) return;
+      const current = document.getElementById("app-favicon") as HTMLLinkElement | null;
+      if (!current || current.href !== chosenHref) {
+        applyFavicon(chosenHref);
       }
     });
-    
-    observer.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
+
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["href"],
+    });
 
     return () => {
-        clearTimeout(timeoutId);
-        observer.disconnect();
+      if (imageLoader) {
+        imageLoader.onload = null;
+        imageLoader.onerror = null;
+      }
+      observer.disconnect();
     };
-  }, [config.metaTitle, config.favicon, pathname]);
+  }, [config.metaTitle, config.favicon, pathname, isLoading, fetchFailed]);
 
   return null;
 };
