@@ -5,6 +5,8 @@ import { DEFAULT_CONFIG, ConfigData } from "@/lib/defaultConfig";
 interface ConfigContextType {
   config: ConfigData;
   updateConfig: (newConfig: Partial<ConfigData>) => void;
+  isLoading: boolean;
+  fetchFailed: boolean;
 }
 
 const defaultConfig: ConfigData = DEFAULT_CONFIG;
@@ -15,26 +17,40 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [config, setConfig] = useState<ConfigData>(defaultConfig);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
       try {
         const res = await fetch("/api/config", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
+          if (!active) return;
           setConfig({ ...defaultConfig, ...data });
           localStorage.setItem("veda_config", JSON.stringify(data));
+          setFetchFailed(false);
           return;
         }
-      } catch {}
+        if (active) setFetchFailed(true);
+      } catch {
+        if (active) setFetchFailed(true);
+      }
       const saved = localStorage.getItem("veda_config");
       if (saved) {
         try {
+          if (!active) return;
           setConfig({ ...defaultConfig, ...JSON.parse(saved) });
         } catch {}
       }
     };
-    load();
+    void load().finally(() => {
+      if (active) setIsLoading(false);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const updateConfig = (newConfig: Partial<ConfigData>) => {
@@ -58,7 +74,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <ConfigContext.Provider value={{ config, updateConfig }}>
+    <ConfigContext.Provider value={{ config, updateConfig, isLoading, fetchFailed }}>
       {children}
     </ConfigContext.Provider>
   );
