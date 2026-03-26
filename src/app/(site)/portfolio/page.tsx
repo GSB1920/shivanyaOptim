@@ -1,6 +1,7 @@
 import React from "react";
-import HeroSub from "@/components/SharedComponents/HeroSub";
 import { Metadata } from "next";
+import ConfigHeroSub from "@/components/SharedComponents/ConfigHeroSub";
+import PortfolioContent from "@/components/SharedComponents/PortfolioContent";
 
 export const metadata: Metadata = {
   title: "Portfolio | Business Template",
@@ -14,14 +15,13 @@ const PortfolioPage = () => {
   ];
   return (
     <>
-      <HeroSub title="Portfolio" description="Case studies and success stories coming soon." breadcrumbLinks={breadcrumbLinks} />
-      <section className="dark:bg-darkmode py-16">
-        <div className="container mx-auto lg:max-w-(--breakpoint-xl) md:max-w-(--breakpoint-md) px-4">
-          <p className="text-muted dark:text-white dark:text-opacity-70">
-            We are curating our portfolio. Check back soon for detailed case studies.
-          </p>
-        </div>
-      </section>
+      <ConfigHeroSub
+        title="Portfolio"
+        descriptionKey="portfolioHeroDescription"
+        fallbackDescription="Case studies and product outcomes from recent engagements."
+        breadcrumbLinks={breadcrumbLinks}
+      />
+      <PortfolioContent />
     </>
   );
 };

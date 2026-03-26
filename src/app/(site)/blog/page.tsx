@@ -1,6 +1,6 @@
 import React from "react";
 import BlogList from "@/components/Blog/BlogList";
-import HeroSub from "@/components/SharedComponents/HeroSub";
+import ConfigHeroSub from "@/components/SharedComponents/ConfigHeroSub";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Blog | Nicktio",
@@ -13,11 +13,12 @@ const Page = () => {
   ];
   return (
     <>
-      <HeroSub
+      <ConfigHeroSub
         title="Blog"
-         description=""
+        descriptionKey="blogHeroDescription"
+        fallbackDescription="Insights, stories, and updates from our team."
         breadcrumbLinks={breadcrumbLinks}  
-         />
+      />
       <BlogList />
     </>
   );

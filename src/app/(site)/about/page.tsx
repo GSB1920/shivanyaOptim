@@ -1,5 +1,5 @@
 import React from "react";
-import HeroSub from "@/components/SharedComponents/HeroSub";
+import ConfigHeroSub from "@/components/SharedComponents/ConfigHeroSub";
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,7 +16,12 @@ const AboutPage = () => {
   ];
   return (
     <>
-      <HeroSub title="About Us" description="" breadcrumbLinks={breadcrumbLinks} />
+      <ConfigHeroSub
+        title="About Us"
+        descriptionKey="aboutHeroDescription"
+        fallbackDescription="Learn about our mission, team, and delivery approach."
+        breadcrumbLinks={breadcrumbLinks}
+      />
       <section className="dark:bg-darkmode py-16">
         <div className="container mx-auto lg:max-w-(--breakpoint-xl) md:max-w-(--breakpoint-md) px-4">
           <div className="grid lg:grid-cols-2 grid-cols-1 gap-12 items-center">

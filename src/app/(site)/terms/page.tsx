@@ -1,6 +1,7 @@
 import React from "react";
-import HeroSub from "@/components/SharedComponents/HeroSub";
 import { Metadata } from "next";
+import ConfigHeroSub from "@/components/SharedComponents/ConfigHeroSub";
+import PolicyContent from "@/components/SharedComponents/PolicyContent";
 
 export const metadata: Metadata = {
   title: "Terms of Service | Business Template",
@@ -14,14 +15,13 @@ const TermsPage = () => {
   ];
   return (
     <>
-      <HeroSub title="Terms of Service" description="Legal terms governing use of our website and services." breadcrumbLinks={breadcrumbLinks} />
-      <section className="dark:bg-darkmode py-16">
-        <div className="container mx-auto lg:max-w-(--breakpoint-xl) md:max-w-(--breakpoint-md) px-4">
-          <p className="text-muted dark:text-white dark:text-opacity-70">
-            This page outlines the terms of service. Detailed content will be published soon.
-          </p>
-        </div>
-      </section>
+      <ConfigHeroSub
+        title="Terms of Service"
+        descriptionKey="termsHeroDescription"
+        fallbackDescription="Legal terms governing use of our website and services."
+        breadcrumbLinks={breadcrumbLinks}
+      />
+      <PolicyContent contentKey="termsContent" />
     </>
   );
 };

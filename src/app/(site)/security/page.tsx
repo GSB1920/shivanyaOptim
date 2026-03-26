@@ -1,6 +1,7 @@
 import React from "react";
-import HeroSub from "@/components/SharedComponents/HeroSub";
 import { Metadata } from "next";
+import ConfigHeroSub from "@/components/SharedComponents/ConfigHeroSub";
+import PolicyContent from "@/components/SharedComponents/PolicyContent";
 
 export const metadata: Metadata = {
   title: "Security | Business Template",
@@ -14,14 +15,13 @@ const SecurityPage = () => {
   ];
   return (
     <>
-      <HeroSub title="Security" description="Best practices to keep your data safe." breadcrumbLinks={breadcrumbLinks} />
-      <section className="dark:bg-darkmode py-16">
-        <div className="container mx-auto lg:max-w-(--breakpoint-xl) md:max-w-(--breakpoint-md) px-4">
-          <p className="text-muted dark:text-white dark:text-opacity-70">
-            Our security policy and certifications will be listed here shortly.
-          </p>
-        </div>
-      </section>
+      <ConfigHeroSub
+        title="Security"
+        descriptionKey="securityHeroDescription"
+        fallbackDescription="Best practices to keep your data safe."
+        breadcrumbLinks={breadcrumbLinks}
+      />
+      <PolicyContent contentKey="securityContent" />
     </>
   );
 };

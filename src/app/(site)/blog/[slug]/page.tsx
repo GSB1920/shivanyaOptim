@@ -3,6 +3,7 @@ import markdownToHtml from "@/utils/markdownToHtml";
 import { format } from "date-fns";
 import Image from "next/image";
 import ShareButtons from "@/components/Blog/ShareButtons";
+import NewsletterSubscribeCard from "@/components/Blog/NewsletterSubscribeCard";
 
 type Props = {
   params: { slug: string };
@@ -149,42 +150,7 @@ export default async function Post({ params }: any) {
                           url={`https://shivanya-software.vercel.app/blog/${data.slug}`}
                         />
                       </div>
-                      <div className="w-full py-12 px-11 bg-white dark:bg-dark_b shadow-lg rounded-b-lg">
-                        <p className="text-24 mb-4">Join our Newsletter</p>
-                        <form
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const form = e.currentTarget;
-                            const input = form.querySelector<HTMLInputElement>("input[name='email']");
-                            const email = input?.value || "";
-                            if (!email) return;
-                            try {
-                              const res = await fetch("/api/subscribe", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ email }),
-                              });
-                              if (res.ok) {
-                                input!.value = "";
-                                alert("Subscribed successfully");
-                              } else {
-                                alert("Subscription failed");
-                              }
-                            } catch {
-                              alert("Network error");
-                            }
-                          }}
-                        >
-                          <input
-                            name="email"
-                            placeholder="Email address"
-                            className="p-3 dark:bg-search border border-border dark:border-dark_border rounded-lg mb-2 w-full focus:outline-0 focus:border-primary dark:focus:border-primary"
-                          />
-                          <button type="submit" className="bg-primary w-full px-7 border text-base text-white border-primary py-4 rounded-sm hover:bg-transparent hover:text-primary">
-                            Subscribe
-                          </button>
-                        </form>
-                      </div>
+                      <NewsletterSubscribeCard />
                     </div>
                   </div>
                 </div>
