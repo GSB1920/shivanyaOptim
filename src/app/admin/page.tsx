@@ -69,10 +69,14 @@ const AdminPage = () => {
   const [applicationsLoading, setApplicationsLoading] = useState(false);
   const [applicationsError, setApplicationsError] = useState("");
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
+  const [logoFileName, setLogoFileName] = useState("");
+  const [faviconFileName, setFaviconFileName] = useState("");
 
   React.useEffect(() => {
     setFormData(config);
     setPositions(parsePositions(config.careersPositionsJson));
+    setLogoFileName("");
+    setFaviconFileName("");
   }, [config]);
 
   const positionNameById = useMemo(() => {
@@ -237,6 +241,12 @@ const AdminPage = () => {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (e.target.name === "logoImage") {
+      setLogoFileName(file.name);
+    }
+    if (e.target.name === "favicon") {
+      setFaviconFileName(file.name);
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
@@ -330,26 +340,26 @@ const AdminPage = () => {
                   <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
                     Logo Image
                   </label>
-                  <input
-                    type="file"
-                    name="logoImage"
-                    accept="image/*"
-                    onChange={handleFile}
-                    className="w-full"
-                  />
+                  <input id="logoImageFile" type="file" name="logoImage" accept="image/*" onChange={handleFile} className="hidden" />
+                  <label htmlFor="logoImageFile" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-opacity-90 transition-colors cursor-pointer">
+                    Choose Logo File
+                  </label>
+                  <p className="text-xs text-muted mt-2">
+                    {logoFileName || "No file selected"}
+                  </p>
                   <p className="text-xs text-muted mt-1">Leave empty to use Logo Text</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-midnight_text dark:text-white">
                     Favicon
                   </label>
-                  <input
-                    type="file"
-                    name="favicon"
-                    accept="image/*,.ico"
-                    onChange={handleFile}
-                    className="w-full"
-                  />
+                  <input id="faviconFile" type="file" name="favicon" accept="image/*,.ico" onChange={handleFile} className="hidden" />
+                  <label htmlFor="faviconFile" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-opacity-90 transition-colors cursor-pointer">
+                    Choose Favicon File
+                  </label>
+                  <p className="text-xs text-muted mt-2">
+                    {faviconFileName || "No file selected"}
+                  </p>
                 </div>
               </div>
             </div>

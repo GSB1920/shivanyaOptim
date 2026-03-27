@@ -15,6 +15,9 @@ type CareerApplication = {
 };
 
 const MEMORY_KEY = "__careers_applications__";
+const REDIS_LEGACY_LIST_KEY = "careers:applications";
+const REDIS_APPLICATION_IDS_KEY = "careers:applications:ids";
+const REDIS_APPLICATION_DATA_KEY = "careers:applications:data";
 
 function getMemoryStore() {
   const globalStore = globalThis as unknown as Record<string, CareerApplication[] | undefined>;
@@ -32,6 +35,45 @@ function normalizeApplication(item: CareerApplication) {
   };
 }
 
+function parseApplication(raw: string | null) {
+  if (!raw) return null;
+  try {
+    return normalizeApplication(JSON.parse(raw) as CareerApplication);
+  } catch {
+    return null;
+  }
+}
+
+async function getRedisApplications(redis: Redis) {
+  const ids = await redis.lrange<string>(REDIS_APPLICATION_IDS_KEY, 0, 199);
+  if (ids.length > 0) {
+    const items = await Promise.all(
+      ids.map((id) => redis.hget<string>(REDIS_APPLICATION_DATA_KEY, id))
+    );
+    return items
+      .map((item) => parseApplication(item))
+      .filter((item): item is CareerApplication => item !== null);
+  }
+
+  const legacyItems = await redis.lrange<string>(REDIS_LEGACY_LIST_KEY, 0, 199);
+  const applications = legacyItems
+    .map((item) => parseApplication(item))
+    .filter((item): item is CareerApplication => item !== null);
+
+  if (applications.length > 0) {
+    for (let i = applications.length - 1; i >= 0; i -= 1) {
+      const application = applications[i];
+      await redis.lpush(REDIS_APPLICATION_IDS_KEY, application.id);
+      await redis.hset(
+        REDIS_APPLICATION_DATA_KEY,
+        { [application.id]: JSON.stringify(application) }
+      );
+    }
+  }
+
+  return applications;
+}
+
 export async function GET() {
   try {
     const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -40,16 +82,7 @@ export async function GET() {
 
     if (url && token) {
       const redis = new Redis({ url, token });
-      const items = await redis.lrange<string>("careers:applications", 0, 199);
-      const applications = items
-        .map((item) => {
-          try {
-            return normalizeApplication(JSON.parse(item) as CareerApplication);
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean);
+      const applications = await getRedisApplications(redis);
       return NextResponse.json({ applications }, { status: 200 });
     }
 
@@ -102,7 +135,11 @@ export async function POST(request: Request) {
 
     if (url && token) {
       const redis = new Redis({ url, token });
-      await redis.lpush("careers:applications", JSON.stringify(application));
+      await redis.lpush(REDIS_APPLICATION_IDS_KEY, application.id);
+      await redis.hset(
+        REDIS_APPLICATION_DATA_KEY,
+        { [application.id]: JSON.stringify(application) }
+      );
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
@@ -133,25 +170,19 @@ export async function PATCH(request: Request) {
 
     if (url && token) {
       const redis = new Redis({ url, token });
-      const items = await redis.lrange<string>("careers:applications", 0, 999);
-      const parsed = items
-        .map((item) => {
-          try {
-            return normalizeApplication(JSON.parse(item) as CareerApplication);
-          } catch {
-            return null;
-          }
-        })
-        .filter((item): item is CareerApplication => item !== null);
-      const index = parsed.findIndex((item) => item.id === id);
-      if (index === -1) {
+      await getRedisApplications(redis);
+      const existing = parseApplication(
+        await redis.hget<string>(REDIS_APPLICATION_DATA_KEY, id)
+      );
+      if (!existing) {
         return NextResponse.json({ error: "Application not found" }, { status: 404 });
       }
-      parsed[index] = { ...parsed[index], status, updatedAt: new Date().toISOString() };
-      await redis.del("careers:applications");
-      for (let i = parsed.length - 1; i >= 0; i -= 1) {
-        await redis.lpush("careers:applications", JSON.stringify(parsed[i]));
-      }
+      const updated = {
+        ...existing,
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+      await redis.hset(REDIS_APPLICATION_DATA_KEY, { [id]: JSON.stringify(updated) });
       return NextResponse.json({ success: true }, { status: 200 });
     }
 

@@ -95,7 +95,7 @@ const Footer = () => {
               Platform
             </h4>
             <ul>
-              {footerLinks.slice(9, 14).map((item, index) => (
+              {footerLinks.slice(9, 12).map((item, index) => (
                 <li key={index} className="pb-3">
                   <Link
                     href={item.href}
@@ -184,7 +184,7 @@ const Footer = () => {
             </Link>
           </p>
           <div className="flex gap-4">
-            {footerLinks.slice(14, 17).map((item, index) => (
+            {footerLinks.slice(12, 15).map((item, index) => (
               <div key={index} className="">
                 <Link href={item.href} className="text-foottext hover:text-primary">
                   {item.link}

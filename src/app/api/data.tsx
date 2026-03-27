@@ -110,10 +110,6 @@ export const footerLinks: { link: string; href: string }[] = [
     href: "/blog",
   },
   {
-    link: "Contact Support",
-    href: "/contact",
-  },
-  {
     link: "FAQs",
     href: "/faq",
   },
