@@ -217,7 +217,7 @@ const AdminPage = () => {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalizedPositions = positions.map((item, index) => {
       const fallback = `position-${index + 1}`;
@@ -234,11 +234,54 @@ const AdminPage = () => {
     };
     setPositions(normalizedPositions);
     setFormData(payload);
-    updateConfig(payload);
-    alert("Configuration saved successfully!");
+    const ok = await updateConfig(payload);
+    if (ok) {
+      alert("Configuration saved successfully!");
+    } else {
+      alert("Configuration save failed. Please try again.");
+    }
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const encodeImageFile = async (
+    file: File,
+    options: { maxWidth: number; maxHeight: number; mimeType: string; quality?: number }
+  ) => {
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new window.Image();
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Image load failed"));
+        image.src = url;
+      });
+      const scale = Math.min(
+        1,
+        options.maxWidth / image.naturalWidth,
+        options.maxHeight / image.naturalHeight
+      );
+      const targetWidth = Math.max(1, Math.round(image.naturalWidth * scale));
+      const targetHeight = Math.max(1, Math.round(image.naturalHeight * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+      ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+      return canvas.toDataURL(options.mimeType, options.quality);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("File read failed"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (e.target.name === "logoImage") {
@@ -247,13 +290,36 @@ const AdminPage = () => {
     if (e.target.name === "favicon") {
       setFaviconFileName(file.name);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const name = e.target.name as keyof typeof formData;
-      setFormData((prev) => ({ ...prev, [name]: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+
+    const name = e.target.name as keyof typeof formData;
+    let dataUrl = "";
+    try {
+      if (name === "logoImage") {
+        dataUrl = await encodeImageFile(file, {
+          maxWidth: 800,
+          maxHeight: 300,
+          mimeType: "image/webp",
+          quality: 0.88,
+        });
+      } else if (name === "favicon") {
+        dataUrl = await encodeImageFile(file, {
+          maxWidth: 128,
+          maxHeight: 128,
+          mimeType: "image/png",
+        });
+      } else {
+        dataUrl = await readFileAsDataUrl(file);
+      }
+    } catch {
+      dataUrl = await readFileAsDataUrl(file);
+    }
+
+    if (dataUrl.length > 900_000) {
+      alert("Selected image is too large. Please upload a smaller image.");
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: dataUrl }));
   };
 
   const handleChange = (
@@ -345,7 +411,7 @@ const AdminPage = () => {
                     Choose Logo File
                   </label>
                   <p className="text-xs text-muted mt-2">
-                    {logoFileName || "No file selected"}
+                    {logoFileName || (formData.logoImage ? "Saved logo is set" : "No file selected")}
                   </p>
                   <p className="text-xs text-muted mt-1">Leave empty to use Logo Text</p>
                 </div>
@@ -358,7 +424,7 @@ const AdminPage = () => {
                     Choose Favicon File
                   </label>
                   <p className="text-xs text-muted mt-2">
-                    {faviconFileName || "No file selected"}
+                    {faviconFileName || (formData.favicon ? "Saved favicon is set" : "No file selected")}
                   </p>
                 </div>
               </div>

@@ -4,12 +4,32 @@ import { DEFAULT_CONFIG, ConfigData } from "@/lib/defaultConfig";
 
 interface ConfigContextType {
   config: ConfigData;
-  updateConfig: (newConfig: Partial<ConfigData>) => void;
+  updateConfig: (newConfig: Partial<ConfigData>) => Promise<boolean>;
   isLoading: boolean;
   fetchFailed: boolean;
 }
 
 const defaultConfig: ConfigData = DEFAULT_CONFIG;
+const STORAGE_KEY = "veda_config";
+
+const persistConfigToStorage = (value: ConfigData) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    return;
+  } catch {}
+
+  const reduced: ConfigData = { ...value };
+  delete reduced.logoImage;
+  delete reduced.favicon;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reduced));
+  } catch {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+  }
+};
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
@@ -29,7 +49,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
           const data = await res.json();
           if (!active) return;
           setConfig({ ...defaultConfig, ...data });
-          localStorage.setItem("veda_config", JSON.stringify(data));
+          persistConfigToStorage({ ...defaultConfig, ...data });
           setFetchFailed(false);
           return;
         }
@@ -37,7 +57,10 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
       } catch {
         if (active) setFetchFailed(true);
       }
-      const saved = localStorage.getItem("veda_config");
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(STORAGE_KEY);
+      } catch {}
       if (saved) {
         try {
           if (!active) return;
@@ -53,24 +76,26 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  const updateConfig = (newConfig: Partial<ConfigData>) => {
+  const updateConfig = async (newConfig: Partial<ConfigData>) => {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
-    localStorage.setItem("veda_config", JSON.stringify(updated));
-    void fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const details = await res.json().catch(() => ({}));
-          console.error("Config save failed:", details);
-        }
-      })
-      .catch((err) => {
-        console.error("Config save failed (network):", err);
+    persistConfigToStorage(updated);
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
       });
+      if (!res.ok) {
+        const details = await res.json().catch(() => ({}));
+        console.error("Config save failed:", details);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Config save failed (network):", err);
+      return false;
+    }
   };
 
   return (
