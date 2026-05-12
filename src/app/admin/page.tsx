@@ -2,21 +2,13 @@
 import React, { useMemo, useState } from "react";
 import { useConfig } from "@/context/ConfigContext";
 import { useRouter } from "next/navigation";
-
-type ApplicationStatus = "new" | "reviewed" | "rejected";
-
-type CareerApplication = {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  resumeLink: string;
-  coverLetter: string;
-  positionId: string;
-  status: ApplicationStatus;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  APPLICATION_STATUSES,
+  ApplicationStatus,
+  CareerApplication,
+} from "@/lib/careerApplications";
+import { storage } from "@/lib/firebaseConfig";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
 type CareerPosition = {
   id: string;
@@ -57,11 +49,69 @@ const statusStyles: Record<ApplicationStatus, string> = {
 
 const escapeCsv = (value: string) => `"${String(value || "").replace(/"/g, '""')}"`;
 
+type ConfigAssetField = "logoImage" | "favicon";
+
+const isConfigAssetField = (value: string): value is ConfigAssetField =>
+  value === "logoImage" || value === "favicon";
+
+const sanitizeFileName = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9.]+/g, "-")
+    .replace(/(^-|-$)+/g, "") || "asset";
+
+const dataUrlContentType = (value: string) => {
+  const match = /^data:([^;]+);/.exec(value);
+  return match?.[1] || "application/octet-stream";
+};
+
+const dataUrlToBlob = async (value: string) => {
+  const response = await fetch(value);
+  return response.blob();
+};
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Upload timed out")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+};
+
+const getUploadErrorMessage = (error: unknown) => {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code || "")
+      : "";
+  const message = error instanceof Error ? error.message : "Unknown upload error";
+
+  if (code === "storage/unauthorized") {
+    return "Firebase Storage rejected the upload. Allow writes to site-assets/logo and site-assets/favicon in Storage rules, or enable Firebase Auth for admin.";
+  }
+
+  if (code === "storage/bucket-not-found") {
+    return "Firebase Storage bucket was not found. Check NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET or the storageBucket value in firebaseConfig.";
+  }
+
+  if (message === "Upload timed out") {
+    return "Firebase Storage upload timed out. Check your network connection and Firebase Storage rules.";
+  }
+
+  return code ? `${code}: ${message}` : message;
+};
+
 const AdminPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { config, updateConfig } = useConfig();
+  const { config, updateConfig, isLoading } = useConfig();
   const router = useRouter();
   const [formData, setFormData] = useState(config);
   const [positions, setPositions] = useState<CareerPosition[]>(parsePositions(config.careersPositionsJson));
@@ -71,12 +121,18 @@ const AdminPage = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState("");
   const [logoFileName, setLogoFileName] = useState("");
   const [faviconFileName, setFaviconFileName] = useState("");
+  const [assetUploading, setAssetUploading] = useState<Record<ConfigAssetField, boolean>>({
+    logoImage: false,
+    favicon: false,
+  });
+  const isUploadingAsset = assetUploading.logoImage || assetUploading.favicon;
 
   React.useEffect(() => {
     setFormData(config);
     setPositions(parsePositions(config.careersPositionsJson));
     setLogoFileName("");
     setFaviconFileName("");
+    setAssetUploading({ logoImage: false, favicon: false });
   }, [config]);
 
   const positionNameById = useMemo(() => {
@@ -281,45 +337,75 @@ const AdminPage = () => {
       reader.readAsDataURL(file);
     });
 
+  const uploadConfigAsset = async (
+    field: ConfigAssetField,
+    file: File,
+    dataUrl: string
+  ) => {
+    const folder = field === "logoImage" ? "logo" : "favicon";
+    const path = `site-assets/${folder}/${Date.now()}-${sanitizeFileName(file.name)}`;
+    const assetRef = ref(storage, path);
+    const blob = await dataUrlToBlob(dataUrl);
+    await withTimeout(uploadBytes(assetRef, blob, {
+      contentType: dataUrlContentType(dataUrl),
+    }), 30_000);
+    return getDownloadURL(assetRef);
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
-    if (e.target.name === "logoImage") {
+    const name = input.name;
+    if (name === "logoImage") {
       setLogoFileName(file.name);
     }
-    if (e.target.name === "favicon") {
+    if (name === "favicon") {
       setFaviconFileName(file.name);
     }
 
-    const name = e.target.name as keyof typeof formData;
     let dataUrl = "";
     try {
-      if (name === "logoImage") {
-        dataUrl = await encodeImageFile(file, {
-          maxWidth: 800,
-          maxHeight: 300,
-          mimeType: "image/webp",
-          quality: 0.88,
-        });
-      } else if (name === "favicon") {
-        dataUrl = await encodeImageFile(file, {
-          maxWidth: 128,
-          maxHeight: 128,
-          mimeType: "image/png",
-        });
-      } else {
+      const isConfigAsset = isConfigAssetField(name);
+      if (isConfigAsset) {
+        setAssetUploading((prev) => ({ ...prev, [name]: true }));
+      }
+      try {
+        if (name === "logoImage") {
+          dataUrl = await encodeImageFile(file, {
+            maxWidth: 800,
+            maxHeight: 300,
+            mimeType: "image/webp",
+            quality: 0.88,
+          });
+        } else if (name === "favicon") {
+          dataUrl = await encodeImageFile(file, {
+            maxWidth: 128,
+            maxHeight: 128,
+            mimeType: "image/png",
+          });
+        } else {
+          dataUrl = await readFileAsDataUrl(file);
+        }
+      } catch {
         dataUrl = await readFileAsDataUrl(file);
       }
-    } catch {
-      dataUrl = await readFileAsDataUrl(file);
-    }
 
-    if (dataUrl.length > 900_000) {
-      alert("Selected image is too large. Please upload a smaller image.");
-      return;
+      if (isConfigAsset) {
+        const downloadUrl = await uploadConfigAsset(name, file, dataUrl);
+        setFormData((prev) => ({ ...prev, [name]: downloadUrl }));
+      } else {
+        setFormData((prev) => ({ ...prev, [name]: dataUrl }));
+      }
+    } catch (error) {
+      console.error("Firebase Storage upload failed:", error);
+      alert(getUploadErrorMessage(error));
+    } finally {
+      if (isConfigAssetField(name)) {
+        setAssetUploading((prev) => ({ ...prev, [name]: false }));
+      }
+      input.value = "";
     }
-
-    setFormData((prev) => ({ ...prev, [name]: dataUrl }));
   };
 
   const handleChange = (
@@ -377,6 +463,20 @@ const AdminPage = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <section className="pt-40 pb-20 dark:bg-darkmode min-h-screen">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="bg-white dark:bg-midnight_text rounded-lg shadow-lg p-8">
+            <p className="text-midnight_text dark:text-white">
+              Loading saved configuration...
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="pt-40 pb-20 dark:bg-darkmode min-h-screen">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -408,10 +508,12 @@ const AdminPage = () => {
                   </label>
                   <input id="logoImageFile" type="file" name="logoImage" accept="image/*" onChange={handleFile} className="hidden" />
                   <label htmlFor="logoImageFile" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-opacity-90 transition-colors cursor-pointer">
-                    Choose Logo File
+                    {assetUploading.logoImage ? "Uploading Logo..." : "Choose Logo File"}
                   </label>
                   <p className="text-xs text-muted mt-2">
-                    {logoFileName || (formData.logoImage ? "Saved logo is set" : "No file selected")}
+                    {assetUploading.logoImage
+                      ? "Uploading to Firebase Storage..."
+                      : logoFileName || (formData.logoImage ? "Saved logo is set" : "No file selected")}
                   </p>
                   <p className="text-xs text-muted mt-1">Leave empty to use Logo Text</p>
                 </div>
@@ -421,10 +523,12 @@ const AdminPage = () => {
                   </label>
                   <input id="faviconFile" type="file" name="favicon" accept="image/*,.ico" onChange={handleFile} className="hidden" />
                   <label htmlFor="faviconFile" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-opacity-90 transition-colors cursor-pointer">
-                    Choose Favicon File
+                    {assetUploading.favicon ? "Uploading Favicon..." : "Choose Favicon File"}
                   </label>
                   <p className="text-xs text-muted mt-2">
-                    {faviconFileName || (formData.favicon ? "Saved favicon is set" : "No file selected")}
+                    {assetUploading.favicon
+                      ? "Uploading to Firebase Storage..."
+                      : faviconFileName || (formData.favicon ? "Saved favicon is set" : "No file selected")}
                   </p>
                 </div>
               </div>
@@ -797,9 +901,10 @@ const AdminPage = () => {
             <div className="pt-4 flex gap-4">
               <button
                 type="submit"
+                disabled={isUploadingAsset}
                 className="flex-1 bg-primary text-white py-3 rounded-lg hover:bg-opacity-90 transition-colors font-medium"
               >
-                Save Changes
+                {isUploadingAsset ? "Uploading Asset..." : "Save Changes"}
               </button>
               <button
                 type="button"
@@ -871,7 +976,7 @@ const AdminPage = () => {
                       {application.coverLetter ? <p>Cover letter: {application.coverLetter}</p> : null}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {(["new", "reviewed", "rejected"] as ApplicationStatus[]).map((status) => (
+                      {APPLICATION_STATUSES.map((status) => (
                         <button
                           key={status}
                           type="button"

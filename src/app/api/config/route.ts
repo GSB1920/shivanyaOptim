@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
 import { DEFAULT_CONFIG } from "@/lib/defaultConfig";
+import { getFirestoreDocument, setFirestoreDocument } from "@/lib/firestoreRest";
 
-const KEY = "site:config";
-const hasRedisEnv = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-);
-const redis = hasRedisEnv ? Redis.fromEnv() : null;
-let fallbackConfig: Record<string, unknown> | null = null;
+const CONFIG_COLLECTION = "siteConfig";
+const CONFIG_DOCUMENT = "current";
+const CONFIG_PATH = `${CONFIG_COLLECTION}/${CONFIG_DOCUMENT}`;
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!redis) {
-    return NextResponse.json(fallbackConfig || DEFAULT_CONFIG, { status: 200 });
-  }
   try {
-    const data = await redis.get<Record<string, unknown>>(KEY);
-    return NextResponse.json(data || fallbackConfig || DEFAULT_CONFIG, { status: 200 });
-  } catch {
-    return NextResponse.json(fallbackConfig || DEFAULT_CONFIG, { status: 200 });
+    const data = await getFirestoreDocument(CONFIG_PATH);
+    return NextResponse.json({ ...DEFAULT_CONFIG, ...(data || {}) }, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Config fetch failed";
+    console.error("Config fetch failed:", error);
+    return NextResponse.json({ error: "Config fetch failed", details: message }, { status: 500 });
   }
 }
 
@@ -41,20 +39,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Config update failed" }, { status: 500 });
   }
 
-  const mergedWithoutRedis = { ...DEFAULT_CONFIG, ...(fallbackConfig || {}), ...incoming };
-  if (!redis) {
-    fallbackConfig = mergedWithoutRedis;
-    return NextResponse.json(mergedWithoutRedis, { status: 200 });
-  }
-
   try {
-    const current = (await redis.get<Record<string, unknown>>(KEY)) || {};
+    const current = (await getFirestoreDocument(CONFIG_PATH)) || {};
     const merged = { ...DEFAULT_CONFIG, ...current, ...incoming };
-    await redis.set(KEY, merged);
-    fallbackConfig = merged;
-    return NextResponse.json(merged, { status: 200 });
-  } catch {
-    fallbackConfig = mergedWithoutRedis;
-    return NextResponse.json(mergedWithoutRedis, { status: 200 });
+    const saved = await setFirestoreDocument(CONFIG_PATH, merged);
+    return NextResponse.json({ ...DEFAULT_CONFIG, ...saved }, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Config update failed";
+    console.error("Config update failed:", error);
+    return NextResponse.json({ error: "Config update failed", details: message }, { status: 500 });
   }
 }

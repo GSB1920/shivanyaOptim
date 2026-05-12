@@ -12,6 +12,11 @@ interface ConfigContextType {
 const defaultConfig: ConfigData = DEFAULT_CONFIG;
 const STORAGE_KEY = "veda_config";
 
+const normalizeConfig = (value: Partial<ConfigData>): ConfigData => ({
+  ...defaultConfig,
+  ...value,
+});
+
 const persistConfigToStorage = (value: ConfigData) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
@@ -47,9 +52,10 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
         const res = await fetch("/api/config", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
+          const loaded = normalizeConfig(data);
           if (!active) return;
-          setConfig({ ...defaultConfig, ...data });
-          persistConfigToStorage({ ...defaultConfig, ...data });
+          setConfig(loaded);
+          persistConfigToStorage(loaded);
           setFetchFailed(false);
           return;
         }
@@ -64,7 +70,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
       if (saved) {
         try {
           if (!active) return;
-          setConfig({ ...defaultConfig, ...JSON.parse(saved) });
+          setConfig(normalizeConfig(JSON.parse(saved)));
         } catch {}
       }
     };
@@ -77,9 +83,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const updateConfig = async (newConfig: Partial<ConfigData>) => {
-    const updated = { ...config, ...newConfig };
-    setConfig(updated);
-    persistConfigToStorage(updated);
+    const updated = normalizeConfig({ ...config, ...newConfig });
     try {
       const res = await fetch("/api/config", {
         method: "POST",
@@ -87,10 +91,16 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
         body: JSON.stringify(updated),
       });
       if (!res.ok) {
-        const details = await res.json().catch(() => ({}));
+        const details = await res
+          .json()
+          .catch(async () => ({ error: await res.text().catch(() => "Config save failed") }));
         console.error("Config save failed:", details);
         return false;
       }
+      const saved = normalizeConfig(await res.json());
+      setConfig(saved);
+      persistConfigToStorage(saved);
+      setFetchFailed(false);
       return true;
     } catch (err) {
       console.error("Config save failed (network):", err);
