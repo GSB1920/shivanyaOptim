@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import {
   APPLICATION_STATUSES,
-  CAREER_APPLICATIONS_COLLECTION,
   normalizeCareerApplication,
 } from "@/lib/careerApplications";
-import {
-  addFirestoreDocument,
-  getFirestoreDocument,
-  listFirestoreDocuments,
-  patchFirestoreDocument,
-} from "@/lib/firestoreRest";
+import { supabase } from "@/lib/supabaseClient";
+import { mirrorUrlToStorage } from "@/lib/mirrorUrlToStorage";
+
+const TABLE = "career_applications";
+const SELECT_COLUMNS =
+  "id, fullName:full_name, email, phone, resumeLink:resume_link, resumeSourceLink:resume_source_link, coverLetter:cover_letter, positionId:position_id, status, createdAt:created_at, updatedAt:updated_at";
 
 export async function GET() {
   try {
-    const documents = await listFirestoreDocuments(CAREER_APPLICATIONS_COLLECTION, {
-      pageSize: 200,
-      orderBy: "createdAt desc",
-    });
-    const applications = documents.map((item) =>
-      normalizeCareerApplication(item.id, item.data)
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(SELECT_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+
+    const applications = (data || []).map((item) =>
+      normalizeCareerApplication(item.id, item)
     );
     return NextResponse.json({ applications }, { status: 200 });
   } catch (error) {
@@ -54,20 +56,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const application = {
-      fullName: safeFullName,
-      email: safeEmail,
-      phone: String(phone || "").trim(),
-      resumeLink: safeResumeLink,
-      coverLetter: String(coverLetter || "").trim(),
-      positionId: String(positionId || "").trim(),
-      status: "new",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const mirroredResumeUrl = await mirrorUrlToStorage(safeResumeLink, {
+      bucket: "career-resumes",
+      folder: "resumes",
+    });
 
-    const id = await addFirestoreDocument(CAREER_APPLICATIONS_COLLECTION, application);
-    return NextResponse.json({ success: true, id }, { status: 200 });
+    const { data, error } = await supabase
+      .from(TABLE)
+      .insert({
+        full_name: safeFullName,
+        email: safeEmail,
+        phone: String(phone || "").trim(),
+        resume_link: mirroredResumeUrl || safeResumeLink,
+        resume_source_link: safeResumeLink,
+        cover_letter: String(coverLetter || "").trim(),
+        position_id: String(positionId || "").trim(),
+        status: "new",
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    return NextResponse.json({ success: true, id: data.id }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to submit application";
     console.error("Failed to submit application:", error);
@@ -87,16 +97,22 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
     }
 
-    const applicationPath = `${CAREER_APPLICATIONS_COLLECTION}/${id}`;
-    const existing = await getFirestoreDocument(applicationPath);
+    const { data: existing, error: readError } = await supabase
+      .from(TABLE)
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
     if (!existing) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
 
-    await patchFirestoreDocument(applicationPath, {
-      status,
-      updatedAt: new Date().toISOString(),
-    });
+    const { error: writeError } = await supabase
+      .from(TABLE)
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (writeError) throw new Error(writeError.message);
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to update application status";

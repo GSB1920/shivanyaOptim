@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(request: Request) {
   try {
@@ -17,36 +17,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "First name and email are required" }, { status: 400 });
     }
 
-    const submission = {
-      firstName,
-      lastName,
+    const { error } = await supabase.from("contact_submissions").insert({
+      first_name: firstName,
+      last_name: lastName,
       email,
       specialist,
       date,
       time,
-      createdAt: new Date().toISOString(),
-    };
+    });
+    if (error) throw new Error(error.message);
 
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    const isProd = process.env.NODE_ENV === "production";
-
-    if (url && token) {
-      const redis = new Redis({ url, token });
-      await redis.lpush("contact:submissions", JSON.stringify(submission));
-      return NextResponse.json({ success: true });
-    }
-
-    if (isProd) {
-      console.warn("Missing Upstash Redis configuration for /api/contact");
-      return NextResponse.json(
-        { error: "Database is not configured" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true, local: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to submit contact form" }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to submit contact form";
+    console.error("Failed to submit contact form:", error);
+    return NextResponse.json(
+      { error: "Failed to submit contact form", details: message },
+      { status: 500 }
+    );
   }
 }

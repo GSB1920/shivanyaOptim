@@ -7,8 +7,9 @@ import {
   ApplicationStatus,
   CareerApplication,
 } from "@/lib/careerApplications";
-import { storage } from "@/lib/firebaseConfig";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { supabase } from "@/lib/supabaseClient";
+
+const ASSETS_BUCKET = "site-assets";
 
 type CareerPosition = {
   id: string;
@@ -86,25 +87,21 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
 };
 
 const getUploadErrorMessage = (error: unknown) => {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? String((error as { code?: unknown }).code || "")
-      : "";
   const message = error instanceof Error ? error.message : "Unknown upload error";
 
-  if (code === "storage/unauthorized") {
-    return "Firebase Storage rejected the upload. Allow writes to site-assets/logo and site-assets/favicon in Storage rules, or enable Firebase Auth for admin.";
-  }
-
-  if (code === "storage/bucket-not-found") {
-    return "Firebase Storage bucket was not found. Check NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET or the storageBucket value in firebaseConfig.";
-  }
-
   if (message === "Upload timed out") {
-    return "Firebase Storage upload timed out. Check your network connection and Firebase Storage rules.";
+    return "Supabase Storage upload timed out. Check your network connection and the site-assets bucket.";
   }
 
-  return code ? `${code}: ${message}` : message;
+  if (/bucket.*not.*found/i.test(message)) {
+    return `Supabase Storage bucket "${ASSETS_BUCKET}" was not found. Create a public bucket with that exact name.`;
+  }
+
+  if (/row-level security|permission|forbidden|unauthorized/i.test(message)) {
+    return `Supabase Storage rejected the upload. Confirm the "${ASSETS_BUCKET}" bucket is public and has no blocking RLS policies.`;
+  }
+
+  return message;
 };
 
 const AdminPage = () => {
@@ -204,6 +201,7 @@ const AdminPage = () => {
       "positionId",
       "positionTitle",
       "resumeLink",
+      "resumeSourceLink",
       "status",
       "coverLetter",
       "createdAt",
@@ -217,6 +215,7 @@ const AdminPage = () => {
       application.positionId,
       positionNameById[application.positionId] || "",
       application.resumeLink,
+      application.resumeSourceLink,
       application.status || "new",
       application.coverLetter,
       application.createdAt,
@@ -343,13 +342,18 @@ const AdminPage = () => {
     dataUrl: string
   ) => {
     const folder = field === "logoImage" ? "logo" : "favicon";
-    const path = `site-assets/${folder}/${Date.now()}-${sanitizeFileName(file.name)}`;
-    const assetRef = ref(storage, path);
+    const path = `${folder}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const blob = await dataUrlToBlob(dataUrl);
-    await withTimeout(uploadBytes(assetRef, blob, {
-      contentType: dataUrlContentType(dataUrl),
-    }), 30_000);
-    return getDownloadURL(assetRef);
+    const { error: uploadError } = await withTimeout(
+      supabase.storage.from(ASSETS_BUCKET).upload(path, blob, {
+        contentType: dataUrlContentType(dataUrl),
+        upsert: true,
+      }),
+      30_000
+    );
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from(ASSETS_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,7 +402,7 @@ const AdminPage = () => {
         setFormData((prev) => ({ ...prev, [name]: dataUrl }));
       }
     } catch (error) {
-      console.error("Firebase Storage upload failed:", error);
+      console.error("Supabase Storage upload failed:", error);
       alert(getUploadErrorMessage(error));
     } finally {
       if (isConfigAssetField(name)) {
@@ -512,7 +516,7 @@ const AdminPage = () => {
                   </label>
                   <p className="text-xs text-muted mt-2">
                     {assetUploading.logoImage
-                      ? "Uploading to Firebase Storage..."
+                      ? "Uploading to Supabase Storage..."
                       : logoFileName || (formData.logoImage ? "Saved logo is set" : "No file selected")}
                   </p>
                   <p className="text-xs text-muted mt-1">Leave empty to use Logo Text</p>
@@ -527,7 +531,7 @@ const AdminPage = () => {
                   </label>
                   <p className="text-xs text-muted mt-2">
                     {assetUploading.favicon
-                      ? "Uploading to Firebase Storage..."
+                      ? "Uploading to Supabase Storage..."
                       : faviconFileName || (formData.favicon ? "Saved favicon is set" : "No file selected")}
                   </p>
                 </div>
@@ -973,6 +977,14 @@ const AdminPage = () => {
                           {application.resumeLink}
                         </a>
                       </p>
+                      {application.resumeSourceLink && application.resumeSourceLink !== application.resumeLink ? (
+                        <p className="text-xs text-muted dark:text-white dark:text-opacity-60">
+                          Originally submitted as:{" "}
+                          <a href={application.resumeSourceLink} className="hover:underline" target="_blank" rel="noreferrer">
+                            {application.resumeSourceLink}
+                          </a>
+                        </p>
+                      ) : null}
                       {application.coverLetter ? <p>Cover letter: {application.coverLetter}</p> : null}
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">

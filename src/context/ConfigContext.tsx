@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { DEFAULT_CONFIG, ConfigData } from "@/lib/defaultConfig";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 interface ConfigContextType {
   config: ConfigData;
@@ -49,7 +50,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
     let active = true;
     const load = async () => {
       try {
-        const res = await fetch("/api/config", { cache: "no-store" });
+        const res = await fetchWithTimeout("/api/config", { cache: "no-store" }, 10000);
         if (res.ok) {
           const data = await res.json();
           const loaded = normalizeConfig(data);
@@ -85,11 +86,15 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateConfig = async (newConfig: Partial<ConfigData>) => {
     const updated = normalizeConfig({ ...config, ...newConfig });
     try {
-      const res = await fetch("/api/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updated),
-      });
+      const res = await fetchWithTimeout(
+        "/api/config",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        },
+        10000
+      );
       if (!res.ok) {
         const details = await res
           .json()

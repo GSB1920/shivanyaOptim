@@ -6,6 +6,7 @@ export type CareerApplication = {
   email: string;
   phone: string;
   resumeLink: string;
+  resumeSourceLink: string;
   coverLetter: string;
   positionId: string;
   status: ApplicationStatus;
@@ -45,6 +46,7 @@ export const normalizeCareerApplication = (
     email: stringField(data.email),
     phone: stringField(data.phone),
     resumeLink: stringField(data.resumeLink),
+    resumeSourceLink: stringField(data.resumeSourceLink),
     coverLetter: stringField(data.coverLetter),
     positionId: stringField(data.positionId),
     status: APPLICATION_STATUSES.includes(status as ApplicationStatus)

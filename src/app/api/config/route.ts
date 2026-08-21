@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_CONFIG } from "@/lib/defaultConfig";
-import { getFirestoreDocument, setFirestoreDocument } from "@/lib/firestoreRest";
+import { supabase } from "@/lib/supabaseClient";
 
-const CONFIG_COLLECTION = "siteConfig";
-const CONFIG_DOCUMENT = "current";
-const CONFIG_PATH = `${CONFIG_COLLECTION}/${CONFIG_DOCUMENT}`;
+const CONFIG_ROW_ID = "current";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const data = await getFirestoreDocument(CONFIG_PATH);
-    return NextResponse.json({ ...DEFAULT_CONFIG, ...(data || {}) }, { status: 200 });
+    const { data, error } = await supabase
+      .from("site_config")
+      .select("data")
+      .eq("id", CONFIG_ROW_ID)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return NextResponse.json({ ...DEFAULT_CONFIG, ...(data?.data || {}) }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Config fetch failed";
     console.error("Config fetch failed:", error);
@@ -40,10 +43,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const current = (await getFirestoreDocument(CONFIG_PATH)) || {};
-    const merged = { ...DEFAULT_CONFIG, ...current, ...incoming };
-    const saved = await setFirestoreDocument(CONFIG_PATH, merged);
-    return NextResponse.json({ ...DEFAULT_CONFIG, ...saved }, { status: 200 });
+    const { data: existing, error: readError } = await supabase
+      .from("site_config")
+      .select("data")
+      .eq("id", CONFIG_ROW_ID)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+
+    const merged = { ...DEFAULT_CONFIG, ...(existing?.data || {}), ...incoming };
+
+    const { data: saved, error: writeError } = await supabase
+      .from("site_config")
+      .upsert({ id: CONFIG_ROW_ID, data: merged, updated_at: new Date().toISOString() })
+      .select("data")
+      .single();
+    if (writeError) throw new Error(writeError.message);
+
+    return NextResponse.json({ ...DEFAULT_CONFIG, ...saved.data }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Config update failed";
     console.error("Config update failed:", error);

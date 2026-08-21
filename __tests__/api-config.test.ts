@@ -1,13 +1,3 @@
-jest.mock("@upstash/redis", () => ({
-  __esModule: true,
-  Redis: {
-    fromEnv: () => ({
-      get: async () => null,
-      set: async () => null,
-    }),
-  },
-}));
-
 import { POST } from "@/app/api/config/route";
 
 describe("/api/config", () => {
